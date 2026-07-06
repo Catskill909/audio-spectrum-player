@@ -420,6 +420,7 @@
 		}
 
 		function drawBars( w, h, dpr, mirrored ) {
+			var headroom = 0.78; // keep bars from pinning the top of the canvas
 			var barWidth = settings.barWidth * dpr;
 			var barGap = settings.barGap * dpr;
 			var step = barWidth + barGap;
@@ -432,7 +433,7 @@
 			canvasCtx.fillStyle = gradient;
 
 			for ( var i = 0; i < barCount; i++ ) {
-				var barHeight = Math.max( 2 * dpr, values[ i ] * h );
+				var barHeight = Math.max( 2 * dpr, values[ i ] * h * headroom );
 				if ( mirrored ) {
 					var half = barHeight / 2;
 					canvasCtx.fillRect( i * step, h / 2 - half, barWidth, barHeight );
