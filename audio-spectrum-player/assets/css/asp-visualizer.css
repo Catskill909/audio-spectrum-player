@@ -1,0 +1,21 @@
+.asp-visualizer {
+	width: 100%;
+	overflow: hidden;
+	border-radius: 6px 6px 0 0;
+	line-height: 0;
+	margin-bottom: -1px;
+}
+
+.asp-visualizer canvas {
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+/* Tuck the player visually under the visualizer */
+.asp-visualizer + .mejs-container,
+.asp-visualizer + .wp-audio-shortcode,
+.asp-visualizer + .wp-block-audio {
+	border-radius: 0 0 6px 6px;
+	margin-top: 0;
+}

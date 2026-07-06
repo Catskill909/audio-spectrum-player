@@ -1,0 +1,423 @@
+/* Audio Spectrum Player - control panel (Winamp-inspired, modern) */
+
+.asp-panel {
+	--asp-bg: #16161a;
+	--asp-bg-raised: #1f1f26;
+	--asp-border: #2c2c35;
+	--asp-accent: #ff4d00;
+	--asp-accent-soft: #ffa040;
+	--asp-text: #d8d8de;
+	--asp-text-dim: #7a7a85;
+
+	background: linear-gradient(180deg, #1b1b21 0%, var(--asp-bg) 100%);
+	border: 1px solid var(--asp-border);
+	border-top: none;
+	border-radius: 0 0 8px 8px;
+	padding: 14px 16px 16px;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	color: var(--asp-text);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+	margin-bottom: 12px;
+}
+
+.asp-panel.is-bypassed .asp-panel__body {
+	opacity: 0.45;
+	pointer-events: none;
+}
+
+/* Toggle button on the visualizer */
+.asp-visualizer {
+	position: relative;
+}
+
+.asp-panel-toggle {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	z-index: 2;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	background: rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 6px;
+	color: rgba(255, 255, 255, 0.75);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.asp-panel-toggle:hover,
+.asp-panel-toggle.is-open {
+	color: #ff7a2e;
+	border-color: #ff7a2e;
+	background: rgba(0, 0, 0, 0.75);
+}
+
+/* Header */
+.asp-panel__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 14px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--asp-border);
+}
+
+.asp-presets {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.asp-preset {
+	padding: 5px 12px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	background: var(--asp-bg-raised);
+	color: var(--asp-text-dim);
+	border: 1px solid var(--asp-border);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.asp-preset:hover {
+	color: var(--asp-text);
+	border-color: var(--asp-accent-soft);
+}
+
+.asp-preset.is-active {
+	background: linear-gradient(180deg, var(--asp-accent-soft), var(--asp-accent));
+	color: #14100c;
+	border-color: var(--asp-accent);
+}
+
+.asp-presets--comp {
+	margin-bottom: 12px;
+}
+
+.asp-presets--comp .asp-preset {
+	padding: 4px 10px;
+	font-size: 10px;
+}
+
+.asp-panel__header-right {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.asp-clip {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	padding: 4px 8px;
+	border-radius: 4px;
+	color: #4a3030;
+	background: #241a1a;
+	border: 1px solid #352424;
+	transition: all 0.1s ease;
+}
+
+.asp-clip.is-on {
+	color: #fff;
+	background: #e02020;
+	border-color: #ff5050;
+	box-shadow: 0 0 12px rgba(255, 60, 60, 0.7);
+}
+
+.asp-bypass {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	padding: 5px 12px;
+	border-radius: 4px;
+	background: var(--asp-bg-raised);
+	color: var(--asp-text-dim);
+	border: 1px solid var(--asp-border);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.asp-bypass.is-active {
+	background: #caa832;
+	color: #14100c;
+	border-color: #e8c84a;
+	box-shadow: 0 0 10px rgba(232, 200, 74, 0.4);
+}
+
+/* Body layout */
+.asp-panel__body {
+	display: flex;
+	gap: 20px;
+	flex-wrap: wrap;
+	transition: opacity 0.2s ease;
+}
+
+.asp-section {
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid var(--asp-border);
+	border-radius: 8px;
+	padding: 12px 14px;
+}
+
+.asp-section--eq {
+	flex: 2 1 380px;
+}
+
+.asp-section--comp {
+	flex: 1 1 260px;
+}
+
+.asp-section__title {
+	margin: 0 0 12px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	color: var(--asp-accent-soft);
+}
+
+/* EQ vertical sliders */
+.asp-eq {
+	display: flex;
+	align-items: stretch;
+	gap: 4px;
+	justify-content: space-between;
+}
+
+.asp-eq__divider {
+	width: 1px;
+	background: var(--asp-border);
+	margin: 0 6px;
+}
+
+.asp-vslider {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	flex: 1;
+	min-width: 24px;
+}
+
+.asp-vslider__value {
+	font-size: 9px;
+	font-variant-numeric: tabular-nums;
+	color: var(--asp-text-dim);
+	min-height: 12px;
+}
+
+.asp-vslider__label {
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	color: var(--asp-text-dim);
+}
+
+.asp-vslider__input {
+	writing-mode: vertical-lr;
+	direction: rtl;
+	width: 22px;
+	height: 110px;
+	margin: 0;
+	appearance: none;
+	-webkit-appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+
+.asp-vslider__input::-webkit-slider-runnable-track {
+	width: 4px;
+	background: linear-gradient(180deg, var(--asp-accent) 0%, #3a3a44 50%, #3a3a44 100%);
+	border-radius: 2px;
+}
+
+.asp-vslider__input::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	width: 18px;
+	height: 10px;
+	margin-left: -7px;
+	background: linear-gradient(180deg, #f0f0f4, #b8b8c2);
+	border: 1px solid #08080a;
+	border-radius: 3px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.asp-vslider__input::-moz-range-track {
+	width: 4px;
+	background: #3a3a44;
+	border-radius: 2px;
+}
+
+.asp-vslider__input::-moz-range-thumb {
+	width: 18px;
+	height: 10px;
+	background: linear-gradient(180deg, #f0f0f4, #b8b8c2);
+	border: 1px solid #08080a;
+	border-radius: 3px;
+}
+
+/* Balance */
+.asp-balance {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 12px;
+}
+
+.asp-balance__label {
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: var(--asp-text-dim);
+}
+
+.asp-balance__value {
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	color: var(--asp-accent-soft);
+	min-width: 32px;
+	text-align: right;
+}
+
+.asp-balance__input,
+.asp-hslider__input {
+	flex: 1;
+	appearance: none;
+	-webkit-appearance: none;
+	height: 20px;
+	margin: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.asp-balance__input::-webkit-slider-runnable-track,
+.asp-hslider__input::-webkit-slider-runnable-track {
+	height: 4px;
+	background: #3a3a44;
+	border-radius: 2px;
+}
+
+.asp-balance__input::-webkit-slider-thumb,
+.asp-hslider__input::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	width: 10px;
+	height: 18px;
+	margin-top: -7px;
+	background: linear-gradient(180deg, #f0f0f4, #b8b8c2);
+	border: 1px solid #08080a;
+	border-radius: 3px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.asp-balance__input::-moz-range-track,
+.asp-hslider__input::-moz-range-track {
+	height: 4px;
+	background: #3a3a44;
+	border-radius: 2px;
+}
+
+.asp-balance__input::-moz-range-thumb,
+.asp-hslider__input::-moz-range-thumb {
+	width: 10px;
+	height: 18px;
+	background: linear-gradient(180deg, #f0f0f4, #b8b8c2);
+	border: 1px solid #08080a;
+	border-radius: 3px;
+}
+
+/* Compressor */
+.asp-comp {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px 14px;
+}
+
+.asp-hslider__top {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 2px;
+}
+
+.asp-hslider__label {
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--asp-text-dim);
+}
+
+.asp-hslider__value {
+	font-size: 9px;
+	font-variant-numeric: tabular-nums;
+	color: var(--asp-accent-soft);
+}
+
+.asp-hslider__input {
+	width: 100%;
+}
+
+/* Gain reduction meter */
+.asp-gr {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 14px;
+}
+
+.asp-gr__label {
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: var(--asp-text-dim);
+}
+
+.asp-gr__track {
+	flex: 1;
+	height: 10px;
+	background: #101014;
+	border: 1px solid var(--asp-border);
+	border-radius: 5px;
+	overflow: hidden;
+}
+
+.asp-gr__fill {
+	height: 100%;
+	width: 0%;
+	background: repeating-linear-gradient(
+		90deg,
+		#3ddc63 0px,
+		#3ddc63 6px,
+		transparent 6px,
+		transparent 8px
+	);
+	transition: width 0.06s linear;
+}
+
+.asp-gr__db {
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	color: var(--asp-text);
+	min-width: 52px;
+	text-align: right;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+	.asp-panel__body {
+		flex-direction: column;
+	}
+
+	.asp-vslider__input {
+		height: 90px;
+	}
+
+	.asp-comp {
+		grid-template-columns: 1fr;
+	}
+}
