@@ -77,7 +77,7 @@ function asp_enqueue_assets() {
 			'fftSize'       => 2048,
 			'smoothing'     => 0.82,
 			'peakCaps'      => true,
-			'eqCurve'       => true,
+			'meterMode'     => 'bars',
 		)
 	);
 

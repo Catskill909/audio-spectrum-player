@@ -113,6 +113,25 @@
 	gap: 10px;
 }
 
+.asp-meter-select {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	padding: 4px 8px;
+	background: var(--asp-bg-raised);
+	color: var(--asp-text);
+	border: 1px solid var(--asp-border);
+	border-radius: 4px;
+	cursor: pointer;
+	appearance: auto;
+}
+
+.asp-meter-select:hover,
+.asp-meter-select:focus {
+	border-color: var(--asp-accent-soft);
+	outline: none;
+}
+
 .asp-clip {
 	font-size: 10px;
 	font-weight: 700;

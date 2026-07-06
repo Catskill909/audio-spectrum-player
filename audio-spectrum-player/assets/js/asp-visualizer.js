@@ -21,7 +21,7 @@
 		fftSize: 2048,
 		smoothing: 0.82,
 		peakCaps: true,
-		eqCurve: true
+		meterMode: 'bars'
 	};
 
 	var settings = Object.assign( {}, defaults, window.aspSettings || {} );
@@ -48,6 +48,13 @@
 		punchy: { label: 'Punchy', comp: { threshold: -24, knee: 10, ratio: 4, attack: 0.005, release: 0.15, makeup: 4 } },
 		radio: { label: 'Radio', comp: { threshold: -30, knee: 6, ratio: 8, attack: 0.003, release: 0.25, makeup: 6 } },
 		brick: { label: 'Brickwall', comp: { threshold: -40, knee: 0, ratio: 20, attack: 0.001, release: 0.1, makeup: 8 } }
+	};
+
+	var METER_MODES = {
+		bars: 'Bars',
+		mirror: 'Mirror',
+		scope: 'Scope',
+		curve: 'Bars + EQ'
 	};
 
 	var STORAGE_KEY = 'asp-chain-v2';
@@ -119,6 +126,7 @@
 		this.state = {
 			eqPreset: 'flat',
 			compPreset: 'off',
+			meter: METER_MODES[ settings.meterMode ] ? settings.meterMode : 'bars',
 			bypass: false,
 			preampDb: 0,
 			balance: 0,
@@ -202,6 +210,13 @@
 		this.saveState();
 	};
 
+	AudioChain.prototype.setMeter = function ( mode ) {
+		if ( METER_MODES[ mode ] ) {
+			this.state.meter = mode;
+			this.saveState();
+		}
+	};
+
 	AudioChain.prototype.isEQFlat = function () {
 		return this.state.eq.every( function ( v ) {
 			return 0 === v;
@@ -264,6 +279,9 @@
 				var saved = JSON.parse( raw );
 				this.state = Object.assign( this.state, saved );
 				this.state.comp = Object.assign( {}, COMP_PRESETS.off.comp, saved.comp || {} );
+				if ( ! METER_MODES[ this.state.meter ] ) {
+					this.state.meter = 'bars';
+				}
 			}
 		} catch ( e ) {
 			/* corrupted storage - keep defaults */
@@ -373,28 +391,7 @@
 			canvasCtx.stroke();
 		}
 
-		function draw() {
-			rafId = requestAnimationFrame( draw );
-
-			analyser.getByteFrequencyData( freqData );
-
-			var w = canvas.width;
-			var h = canvas.height;
-			var dpr = window.devicePixelRatio || 1;
-			var barWidth = settings.barWidth * dpr;
-			var barGap = settings.barGap * dpr;
-			var step = barWidth + barGap;
-			var barCount = Math.floor( w / step );
-
-			canvasCtx.clearRect( 0, 0, w, h );
-			canvasCtx.fillStyle = settings.background;
-			canvasCtx.fillRect( 0, 0, w, h );
-
-			var gradient = canvasCtx.createLinearGradient( 0, h, 0, 0 );
-			gradient.addColorStop( 0, settings.barColorStart );
-			gradient.addColorStop( 1, settings.barColorEnd );
-			canvasCtx.fillStyle = gradient;
-
+		function barValues( barCount ) {
 			// Logarithmic frequency mapping (like classic hardware analyzers)
 			// so the octaves are spread evenly across the bars instead of
 			// cramming all the music into the left edge.
@@ -402,6 +399,7 @@
 			var minFreq = 20;
 			var maxFreq = Math.min( 16000, nyquist );
 			var binHz = nyquist / freqData.length;
+			var values = [];
 
 			for ( var i = 0; i < barCount; i++ ) {
 				var f0 = minFreq * Math.pow( maxFreq / minFreq, i / barCount );
@@ -416,11 +414,33 @@
 				}
 				// Gentle treble tilt to counter natural spectral roll-off.
 				var tilt = 0.85 + 0.45 * ( i / barCount );
-				var value = Math.min( 1, ( peak / 255 ) * tilt );
-				var barHeight = Math.max( 2 * dpr, value * h );
-				canvasCtx.fillRect( i * step, h - barHeight, barWidth, barHeight );
+				values.push( Math.min( 1, ( peak / 255 ) * tilt ) );
+			}
+			return values;
+		}
 
-				if ( settings.peakCaps ) {
+		function drawBars( w, h, dpr, mirrored ) {
+			var barWidth = settings.barWidth * dpr;
+			var barGap = settings.barGap * dpr;
+			var step = barWidth + barGap;
+			var barCount = Math.floor( w / step );
+			var values = barValues( barCount );
+
+			var gradient = canvasCtx.createLinearGradient( 0, h, 0, 0 );
+			gradient.addColorStop( 0, settings.barColorStart );
+			gradient.addColorStop( 1, settings.barColorEnd );
+			canvasCtx.fillStyle = gradient;
+
+			for ( var i = 0; i < barCount; i++ ) {
+				var barHeight = Math.max( 2 * dpr, values[ i ] * h );
+				if ( mirrored ) {
+					var half = barHeight / 2;
+					canvasCtx.fillRect( i * step, h / 2 - half, barWidth, barHeight );
+				} else {
+					canvasCtx.fillRect( i * step, h - barHeight, barWidth, barHeight );
+				}
+
+				if ( settings.peakCaps && ! mirrored ) {
 					if ( undefined === peaks[ i ] || barHeight >= peaks[ i ] ) {
 						peaks[ i ] = barHeight;
 					} else {
@@ -429,7 +449,7 @@
 				}
 			}
 
-			if ( settings.peakCaps ) {
+			if ( settings.peakCaps && ! mirrored ) {
 				canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
 				for ( var p = 0; p < barCount; p++ ) {
 					if ( peaks[ p ] > 3 * dpr ) {
@@ -437,13 +457,56 @@
 					}
 				}
 			}
+		}
 
-			if ( settings.eqCurve && ! chain.state.bypass && ! chain.isEQFlat() ) {
-				drawEQCurve( w, h, dpr );
+		function drawScope( w, h, dpr ) {
+			canvasCtx.beginPath();
+			var sliceWidth = w / timeData.length;
+			for ( var i = 0; i < timeData.length; i++ ) {
+				var v = timeData[ i ] / 128.0;
+				var y = ( v * h ) / 2;
+				if ( 0 === i ) {
+					canvasCtx.moveTo( 0, y );
+				} else {
+					canvasCtx.lineTo( i * sliceWidth, y );
+				}
+			}
+			var gradient = canvasCtx.createLinearGradient( 0, 0, w, 0 );
+			gradient.addColorStop( 0, settings.barColorStart );
+			gradient.addColorStop( 1, settings.barColorEnd );
+			canvasCtx.strokeStyle = gradient;
+			canvasCtx.lineWidth = 2 * dpr;
+			canvasCtx.stroke();
+		}
+
+		function draw() {
+			rafId = requestAnimationFrame( draw );
+
+			analyser.getByteFrequencyData( freqData );
+			analyser.getByteTimeDomainData( timeData );
+
+			var w = canvas.width;
+			var h = canvas.height;
+			var dpr = window.devicePixelRatio || 1;
+
+			canvasCtx.clearRect( 0, 0, w, h );
+			canvasCtx.fillStyle = settings.background;
+			canvasCtx.fillRect( 0, 0, w, h );
+
+			var mode = chain.state.meter;
+
+			if ( 'scope' === mode ) {
+				drawScope( w, h, dpr );
+			} else if ( 'mirror' === mode ) {
+				drawBars( w, h, dpr, true );
+			} else {
+				drawBars( w, h, dpr, false );
+				if ( 'curve' === mode && ! chain.state.bypass && ! chain.isEQFlat() ) {
+					drawEQCurve( w, h, dpr );
+				}
 			}
 
 			// Clip detection (post-chain waveform).
-			analyser.getByteTimeDomainData( timeData );
 			clipped = false;
 			for ( var t = 0; t < timeData.length; t += 8 ) {
 				if ( timeData[ t ] < 3 || timeData[ t ] > 252 ) {
@@ -492,6 +555,7 @@
 					container: made.container,
 					eqPresets: EQ_PRESETS,
 					compPresets: COMP_PRESETS,
+					meterModes: METER_MODES,
 					eqFreqs: EQ_FREQS
 				}
 			} )

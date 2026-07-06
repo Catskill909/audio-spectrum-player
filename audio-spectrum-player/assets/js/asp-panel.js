@@ -81,6 +81,18 @@
 
 		var headRight = el( 'div', 'asp-panel__header-right', header );
 
+		var meterSelect = el( 'select', 'asp-meter-select', headRight );
+		meterSelect.setAttribute( 'aria-label', 'Meter style' );
+		Object.keys( detail.meterModes || {} ).forEach( function ( key ) {
+			var opt = el( 'option', '', meterSelect );
+			opt.value = key;
+			opt.textContent = detail.meterModes[ key ];
+		} );
+		meterSelect.value = chain.state.meter;
+		meterSelect.addEventListener( 'change', function () {
+			chain.setMeter( meterSelect.value );
+		} );
+
 		var clipLed = el( 'span', 'asp-clip', headRight );
 		clipLed.textContent = 'CLIP';
 
