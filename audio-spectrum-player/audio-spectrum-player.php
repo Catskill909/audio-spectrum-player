@@ -172,8 +172,28 @@ function asp_handle_proxy_request() {
 	}
 	session_write_close();
 
+	/*
+	 * Compression MUST be off: gzip strips Content-Length and re-chunks
+	 * the stream, which breaks duration detection and Range-based seeking
+	 * (dead scrubber). Also stop proxy-level buffering and page caching.
+	 */
+	if ( function_exists( 'apache_setenv' ) ) {
+		@apache_setenv( 'no-gzip', '1' );
+	}
+	@ini_set( 'zlib.output_compression', 'Off' );
+	header( 'X-Accel-Buffering: no' );
+	header( 'Cache-Control: no-store' );
+	if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+		define( 'DONOTCACHEPAGE', true );
+	}
+
+	$is_head = isset( $_SERVER['REQUEST_METHOD'] ) && 'HEAD' === $_SERVER['REQUEST_METHOD'];
+
 	$ch = curl_init( $url );
 	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
+	if ( $is_head ) {
+		curl_setopt( $ch, CURLOPT_NOBODY, true );
+	}
 	curl_setopt( $ch, CURLOPT_MAXREDIRS, 3 );
 	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 15 );
 	curl_setopt( $ch, CURLOPT_BUFFERSIZE, 8192 );
@@ -182,18 +202,31 @@ function asp_handle_proxy_request() {
 		curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Range: ' . wp_unslash( $_SERVER['HTTP_RANGE'] ) ) ); // phpcs:ignore
 	}
 
+	$upstream_status = 200;
+	$sent_accept     = false;
+
 	curl_setopt(
 		$ch,
 		CURLOPT_HEADERFUNCTION,
-		function ( $ch, $header ) {
+		function ( $ch, $header ) use ( &$upstream_status, &$sent_accept ) {
 			$trimmed = trim( $header );
 			if ( preg_match( '/^HTTP\/[\d.]+\s+(\d+)/', $trimmed, $m ) ) {
-				$code = (int) $m[1];
-				if ( $code < 300 || $code >= 400 ) {
-					status_header( $code );
+				$upstream_status = (int) $m[1];
+				if ( $upstream_status < 300 || $upstream_status >= 400 ) {
+					http_response_code( $upstream_status );
 				}
-			} elseif ( preg_match( '/^(Content-Type|Content-Length|Content-Range|Accept-Ranges|Last-Modified|ETag):/i', $trimmed ) ) {
-				header( $trimmed );
+			} elseif ( $upstream_status < 300 || $upstream_status >= 400 ) {
+				// Only forward headers from the final (non-redirect) response.
+				if ( preg_match( '/^(Content-Type|Content-Length|Content-Range|Accept-Ranges|Last-Modified|ETag):/i', $trimmed ) ) {
+					header( $trimmed );
+					if ( 0 === stripos( $trimmed, 'Accept-Ranges:' ) ) {
+						$sent_accept = true;
+					}
+				} elseif ( '' === $trimmed && ! $sent_accept ) {
+					// End of final headers: make sure the browser knows it can seek.
+					header( 'Accept-Ranges: bytes' );
+					$sent_accept = true;
+				}
 			}
 			return strlen( $header );
 		}
