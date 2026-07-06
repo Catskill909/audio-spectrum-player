@@ -57,6 +57,32 @@
 		curve: 'Bars + EQ'
 	};
 
+	/*
+	 * Color themes. `start`/`end` feed the gradient styles.
+	 * `mode` selects how bars are colored:
+	 *   gradient - vertical two-stop gradient
+	 *   heat     - each bar colored by its level (green -> red)
+	 *   rainbow  - hue mapped across the frequency axis
+	 */
+	var THEMES = {
+		sunset: { label: 'Sunset', mode: 'gradient', start: '#ff4d00', end: '#ffa040' },
+		heat: { label: 'Heat', mode: 'heat', start: '#2ecc40', end: '#ff4136' },
+		spectrum: { label: 'Spectrum', mode: 'rainbow', start: '#ff3b30', end: '#af52de' },
+		aurora: { label: 'Aurora', mode: 'gradient', start: '#00e5c3', end: '#7a5cff' },
+		mono: { label: 'Mono', mode: 'gradient', start: '#8a9099', end: '#f5f6f7' }
+	};
+
+	function heatColor( v ) {
+		// 0 -> green (120), 1 -> red (0), through yellow/orange.
+		var hue = Math.round( 120 - 120 * Math.min( 1, v * 1.15 ) );
+		return 'hsl(' + hue + ', 90%, 52%)';
+	}
+
+	function rainbowColor( t ) {
+		// bass red (0) -> treble violet (290).
+		return 'hsl(' + Math.round( t * 290 ) + ', 85%, 55%)';
+	}
+
 	var STORAGE_KEY = 'asp-chain-v2';
 	var RAMP = 0.04;
 
@@ -127,6 +153,7 @@
 			eqPreset: 'flat',
 			compPreset: 'off',
 			meter: METER_MODES[ settings.meterMode ] ? settings.meterMode : 'bars',
+			theme: THEMES[ settings.theme ] ? settings.theme : 'sunset',
 			bypass: false,
 			preampDb: 0,
 			balance: 0,
@@ -217,6 +244,13 @@
 		}
 	};
 
+	AudioChain.prototype.setTheme = function ( name ) {
+		if ( THEMES[ name ] ) {
+			this.state.theme = name;
+			this.saveState();
+		}
+	};
+
 	AudioChain.prototype.isEQFlat = function () {
 		return this.state.eq.every( function ( v ) {
 			return 0 === v;
@@ -281,6 +315,9 @@
 				this.state.comp = Object.assign( {}, COMP_PRESETS.off.comp, saved.comp || {} );
 				if ( ! METER_MODES[ this.state.meter ] ) {
 					this.state.meter = 'bars';
+				}
+				if ( ! THEMES[ this.state.theme ] ) {
+					this.state.theme = 'sunset';
 				}
 			}
 		} catch ( e ) {
@@ -426,13 +463,21 @@
 			var step = barWidth + barGap;
 			var barCount = Math.floor( w / step );
 			var values = barValues( barCount );
+			var theme = THEMES[ chain.state.theme ] || THEMES.sunset;
 
-			var gradient = canvasCtx.createLinearGradient( 0, h, 0, 0 );
-			gradient.addColorStop( 0, settings.barColorStart );
-			gradient.addColorStop( 1, settings.barColorEnd );
-			canvasCtx.fillStyle = gradient;
+			if ( 'gradient' === theme.mode ) {
+				var gradient = canvasCtx.createLinearGradient( 0, h, 0, 0 );
+				gradient.addColorStop( 0, theme.start );
+				gradient.addColorStop( 1, theme.end );
+				canvasCtx.fillStyle = gradient;
+			}
 
 			for ( var i = 0; i < barCount; i++ ) {
+				if ( 'heat' === theme.mode ) {
+					canvasCtx.fillStyle = heatColor( values[ i ] );
+				} else if ( 'rainbow' === theme.mode ) {
+					canvasCtx.fillStyle = rainbowColor( i / barCount );
+				}
 				var barHeight = Math.max( 2 * dpr, values[ i ] * h * headroom );
 				if ( mirrored ) {
 					var half = barHeight / 2;
@@ -472,9 +517,10 @@
 					canvasCtx.lineTo( i * sliceWidth, y );
 				}
 			}
+			var theme = THEMES[ chain.state.theme ] || THEMES.sunset;
 			var gradient = canvasCtx.createLinearGradient( 0, 0, w, 0 );
-			gradient.addColorStop( 0, settings.barColorStart );
-			gradient.addColorStop( 1, settings.barColorEnd );
+			gradient.addColorStop( 0, theme.start );
+			gradient.addColorStop( 1, theme.end );
 			canvasCtx.strokeStyle = gradient;
 			canvasCtx.lineWidth = 2 * dpr;
 			canvasCtx.stroke();
@@ -557,6 +603,7 @@
 					eqPresets: EQ_PRESETS,
 					compPresets: COMP_PRESETS,
 					meterModes: METER_MODES,
+					themes: THEMES,
 					eqFreqs: EQ_FREQS
 				}
 			} )

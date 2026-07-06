@@ -113,23 +113,36 @@
 	gap: 10px;
 }
 
-.asp-meter-select {
-	font-size: 10px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	padding: 4px 8px;
-	background: var(--asp-bg-raised);
-	color: var(--asp-text);
+/* Tabs */
+.asp-tabs {
+	display: flex;
+	gap: 4px;
+	background: rgba(0, 0, 0, 0.35);
 	border: 1px solid var(--asp-border);
-	border-radius: 4px;
-	cursor: pointer;
-	appearance: auto;
+	border-radius: 6px;
+	padding: 3px;
 }
 
-.asp-meter-select:hover,
-.asp-meter-select:focus {
-	border-color: var(--asp-accent-soft);
-	outline: none;
+.asp-tab {
+	padding: 5px 16px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	background: transparent;
+	color: var(--asp-text-dim);
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.asp-tab:hover {
+	color: var(--asp-text);
+}
+
+.asp-tab.is-active {
+	background: linear-gradient(180deg, var(--asp-accent-soft), var(--asp-accent));
+	color: #14100c;
 }
 
 .asp-clip {
@@ -186,12 +199,16 @@
 	padding: 12px 14px;
 }
 
-.asp-section--eq {
-	flex: 2 1 380px;
+.asp-section {
+	flex: 1 1 100%;
 }
 
-.asp-section--comp {
-	flex: 1 1 260px;
+.asp-section[hidden] {
+	display: none;
+}
+
+.asp-section--eq .asp-presets {
+	margin-bottom: 14px;
 }
 
 .asp-section__title {
@@ -424,6 +441,33 @@
 	color: var(--asp-text);
 	min-width: 52px;
 	text-align: right;
+}
+
+/* Display tab: theme pills */
+.asp-section--display .asp-section__title {
+	margin-top: 14px;
+}
+
+.asp-section--display .asp-section__title:first-child {
+	margin-top: 0;
+}
+
+.asp-theme {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.asp-theme__dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	flex: none;
+}
+
+.asp-theme.is-active .asp-theme__dot {
+	border-color: #14100c;
 }
 
 /* Mobile */

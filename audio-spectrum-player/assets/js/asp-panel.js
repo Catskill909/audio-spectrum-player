@@ -63,35 +63,37 @@
 			toggle.classList.toggle( 'is-open', ! panel.hidden );
 		} );
 
-		/* ------ Header: presets + bypass + clip LED ------ */
+		/* ------ Header: tabs + bypass + clip LED ------ */
 		var header = el( 'div', 'asp-panel__header', panel );
 
-		var presetWrap = el( 'div', 'asp-presets', header );
-		var eqPresetButtons = {};
-		Object.keys( eqPresets ).forEach( function ( key ) {
-			var btn = el( 'button', 'asp-preset', presetWrap );
+		var tabBar = el( 'div', 'asp-tabs', header );
+		var tabButtons = {};
+		var tabPanes = {};
+
+		function addTab( key, label ) {
+			var btn = el( 'button', 'asp-tab', tabBar );
 			btn.type = 'button';
-			btn.textContent = eqPresets[ key ].label;
+			btn.textContent = label;
 			btn.addEventListener( 'click', function () {
-				chain.applyEQPreset( key );
-				syncUI();
+				selectTab( key );
 			} );
-			eqPresetButtons[ key ] = btn;
-		} );
+			tabButtons[ key ] = btn;
+		}
+
+		function selectTab( key ) {
+			Object.keys( tabButtons ).forEach( function ( k ) {
+				tabButtons[ k ].classList.toggle( 'is-active', k === key );
+				if ( tabPanes[ k ] ) {
+					tabPanes[ k ].hidden = k !== key;
+				}
+			} );
+		}
+
+		addTab( 'eq', 'EQ' );
+		addTab( 'comp', 'COMP' );
+		addTab( 'display', 'DISPLAY' );
 
 		var headRight = el( 'div', 'asp-panel__header-right', header );
-
-		var meterSelect = el( 'select', 'asp-meter-select', headRight );
-		meterSelect.setAttribute( 'aria-label', 'Meter style' );
-		Object.keys( detail.meterModes || {} ).forEach( function ( key ) {
-			var opt = el( 'option', '', meterSelect );
-			opt.value = key;
-			opt.textContent = detail.meterModes[ key ];
-		} );
-		meterSelect.value = chain.state.meter;
-		meterSelect.addEventListener( 'change', function () {
-			chain.setMeter( meterSelect.value );
-		} );
 
 		var clipLed = el( 'span', 'asp-clip', headRight );
 		clipLed.textContent = 'CLIP';
@@ -107,9 +109,23 @@
 		/* ------ Body ------ */
 		var body = el( 'div', 'asp-panel__body', panel );
 
-		/* EQ section */
+		/* EQ tab */
 		var eqSection = el( 'div', 'asp-section asp-section--eq', body );
-		el( 'h4', 'asp-section__title', eqSection ).textContent = 'EQUALIZER';
+		tabPanes.eq = eqSection;
+
+		var presetWrap = el( 'div', 'asp-presets', eqSection );
+		var eqPresetButtons = {};
+		Object.keys( eqPresets ).forEach( function ( key ) {
+			var btn = el( 'button', 'asp-preset', presetWrap );
+			btn.type = 'button';
+			btn.textContent = eqPresets[ key ].label;
+			btn.addEventListener( 'click', function () {
+				chain.applyEQPreset( key );
+				syncUI();
+			} );
+			eqPresetButtons[ key ] = btn;
+		} );
+
 		var eqRow = el( 'div', 'asp-eq', eqSection );
 
 		function makeVSlider( parent, label, min, max, step, value, onInput, onReset ) {
@@ -180,9 +196,9 @@
 			balReadout.textContent = 'C';
 		} );
 
-		/* Compressor section */
+		/* Compressor tab */
 		var compSection = el( 'div', 'asp-section asp-section--comp', body );
-		el( 'h4', 'asp-section__title', compSection ).textContent = 'COMPRESSOR';
+		tabPanes.comp = compSection;
 
 		var compPresetWrap = el( 'div', 'asp-presets asp-presets--comp', compSection );
 		var compPresetButtons = {};
@@ -234,6 +250,42 @@
 		var meterDb = el( 'span', 'asp-gr__db', meterWrap );
 		meterDb.textContent = '0.0 dB';
 
+		/* Display tab */
+		var dispSection = el( 'div', 'asp-section asp-section--display', body );
+		tabPanes.display = dispSection;
+
+		el( 'h4', 'asp-section__title', dispSection ).textContent = 'METER STYLE';
+		var meterWrapRow = el( 'div', 'asp-presets', dispSection );
+		var meterButtons = {};
+		Object.keys( detail.meterModes || {} ).forEach( function ( key ) {
+			var btn = el( 'button', 'asp-preset', meterWrapRow );
+			btn.type = 'button';
+			btn.textContent = detail.meterModes[ key ];
+			btn.addEventListener( 'click', function () {
+				chain.setMeter( key );
+				syncUI();
+			} );
+			meterButtons[ key ] = btn;
+		} );
+
+		el( 'h4', 'asp-section__title', dispSection ).textContent = 'COLOR THEME';
+		var themeRow = el( 'div', 'asp-presets asp-themes', dispSection );
+		var themeButtons = {};
+		Object.keys( detail.themes || {} ).forEach( function ( key ) {
+			var t = detail.themes[ key ];
+			var btn = el( 'button', 'asp-preset asp-theme', themeRow );
+			btn.type = 'button';
+			var dot = el( 'span', 'asp-theme__dot', btn );
+			dot.style.background = 'linear-gradient(135deg, ' + t.start + ', ' + t.end + ')';
+			var lab = el( 'span', '', btn );
+			lab.textContent = t.label;
+			btn.addEventListener( 'click', function () {
+				chain.setTheme( key );
+				syncUI();
+			} );
+			themeButtons[ key ] = btn;
+		} );
+
 		/* ------ Sync helpers ------ */
 		function markCustom( group ) {
 			Object.keys( group ).forEach( function ( key ) {
@@ -266,9 +318,16 @@
 			} );
 			balInput.value = s.balance;
 			balReadout.textContent = balText( s.balance );
+			Object.keys( meterButtons ).forEach( function ( key ) {
+				meterButtons[ key ].classList.toggle( 'is-active', s.meter === key );
+			} );
+			Object.keys( themeButtons ).forEach( function ( key ) {
+				themeButtons[ key ].classList.toggle( 'is-active', s.theme === key );
+			} );
 		}
 
 		syncUI();
+		selectTab( 'eq' );
 
 		/* ------ Live meters via engine frame hook ------ */
 		var clipHold = 0;

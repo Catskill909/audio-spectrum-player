@@ -78,6 +78,7 @@ function asp_enqueue_assets() {
 			'smoothing'     => 0.82,
 			'peakCaps'      => true,
 			'meterMode'     => 'bars',
+			'theme'         => 'sunset',
 		)
 	);
 
