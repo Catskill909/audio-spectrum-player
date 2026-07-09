@@ -3,7 +3,7 @@ Contributors: paulhenshaw
 Tags: audio, visualizer, spectrum, web audio, media player
 Requires at least: 5.0
 Tested up to: 6.5
-Stable tag: 1.0.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,6 +58,27 @@ add_filter( 'asp_visualizer_settings', function ( $settings ) {
   autoplay policies.
 
 == Changelog ==
+
+= 1.1.1 =
+* Fix: RSS feeds no longer have audio URLs rewritten to proxy URLs. The
+  same-origin proxy rewrite is now skipped for feed and REST API requests,
+  so feed consumers (podcast apps, etc.) get the original S3/CDN URLs.
+* Fix: pausing or ending playback now clears the visualizer canvas (and
+  resets peak caps) instead of leaving the bars frozen on screen.
+* Fix: seeking now works for hosts that send no ETag/Last-Modified header
+  (e.g. Backblaze B2). The proxy synthesizes a stable ETag (from
+  x-bz-content-sha1 when available) so browsers accept Range (206)
+  responses instead of restarting playback from the beginning.
+
+= 1.1.0 =
+* Same-origin signed streaming proxy for external audio (CORS bypass)
+  with Range request passthrough for seeking.
+* 10-band EQ with preamp and presets.
+* Compressor with presets and live gain-reduction meter.
+* Stereo balance, bypass A/B, clip LED.
+* Meter styles: Bars, Mirror, Scope, Bars + EQ curve. Color themes.
+* Peak-hold caps, log frequency mapping with treble tilt.
+* Settings persistence via localStorage.
 
 = 1.0.0 =
 * Initial release.

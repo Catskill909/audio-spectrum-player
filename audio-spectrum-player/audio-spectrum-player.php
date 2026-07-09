@@ -3,7 +3,7 @@
  * Plugin Name:       Audio Spectrum Player
  * Plugin URI:        https://rarefunk.com
  * Description:       Adds a real-time audio spectrum visualizer (Web Audio API) above the default WordPress audio player.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Author:            Paul Henshaw
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ASP_VERSION', '1.1.0' );
+define( 'ASP_VERSION', '1.1.1' );
 define( 'ASP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
@@ -208,11 +208,13 @@ function asp_handle_proxy_request() {
 
 	$upstream_status = 200;
 	$sent_accept     = false;
+	$sent_validator  = false;
+	$content_sha1    = '';
 
 	curl_setopt(
 		$ch,
 		CURLOPT_HEADERFUNCTION,
-		function ( $ch, $header ) use ( &$upstream_status, &$sent_accept ) {
+		function ( $ch, $header ) use ( &$upstream_status, &$sent_accept, &$sent_validator, &$content_sha1, $url ) {
 			$trimmed = trim( $header );
 			if ( preg_match( '/^HTTP\/[\d.]+\s+(\d+)/', $trimmed, $m ) ) {
 				$upstream_status = (int) $m[1];
@@ -226,10 +228,29 @@ function asp_handle_proxy_request() {
 					if ( 0 === stripos( $trimmed, 'Accept-Ranges:' ) ) {
 						$sent_accept = true;
 					}
-				} elseif ( '' === $trimmed && ! $sent_accept ) {
+					if ( 0 === stripos( $trimmed, 'Last-Modified:' ) || 0 === stripos( $trimmed, 'ETag:' ) ) {
+						$sent_validator = true;
+					}
+				} elseif ( 0 === stripos( $trimmed, 'x-bz-content-sha1:' ) ) {
+					// Backblaze B2 exposes a content hash instead of an ETag.
+					$content_sha1 = trim( substr( $trimmed, 18 ) );
+				} elseif ( '' === $trimmed ) {
 					// End of final headers: make sure the browser knows it can seek.
-					header( 'Accept-Ranges: bytes' );
-					$sent_accept = true;
+					if ( ! $sent_accept ) {
+						header( 'Accept-Ranges: bytes' );
+						$sent_accept = true;
+					}
+					/*
+					 * Browsers refuse to combine Range (206) responses without a
+					 * validator (ETag/Last-Modified) and restart playback from
+					 * byte 0 on seek. Some hosts (e.g. Backblaze B2) send neither,
+					 * so synthesize a stable ETag.
+					 */
+					if ( ! $sent_validator ) {
+						$etag = $content_sha1 ? $content_sha1 : md5( $url );
+						header( 'ETag: "' . $etag . '"' );
+						$sent_validator = true;
+					}
 				}
 			}
 			return strlen( $header );
