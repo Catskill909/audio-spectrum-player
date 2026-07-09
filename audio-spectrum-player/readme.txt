@@ -3,7 +3,7 @@ Contributors: paulhenshaw
 Tags: audio, visualizer, spectrum, web audio, media player
 Requires at least: 5.0
 Tested up to: 6.5
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,6 +58,12 @@ add_filter( 'asp_visualizer_settings', function ( $settings ) {
   autoplay policies.
 
 == Changelog ==
+
+= 1.1.2 =
+* Fix: scrubber seeking now works for Backblaze B2 files. B2 answers the
+  browser's opening "Range: bytes=0-" request with 200 instead of 206,
+  which makes browsers treat the stream as unseekable. The proxy now
+  upgrades that response to a proper 206 with a Content-Range header.
 
 = 1.1.1 =
 * Fix: RSS feeds no longer have audio URLs rewritten to proxy URLs. The

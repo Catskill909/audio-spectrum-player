@@ -3,7 +3,7 @@
  * Plugin Name:       Audio Spectrum Player
  * Plugin URI:        https://rarefunk.com
  * Description:       Adds a real-time audio spectrum visualizer (Web Audio API) above the default WordPress audio player.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Author:            Paul Henshaw
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ASP_VERSION', '1.1.1' );
+define( 'ASP_VERSION', '1.1.2' );
 define( 'ASP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
@@ -210,11 +210,13 @@ function asp_handle_proxy_request() {
 	$sent_accept     = false;
 	$sent_validator  = false;
 	$content_sha1    = '';
+	$content_length  = 0;
+	$want_full_range = ! empty( $_SERVER['HTTP_RANGE'] ) && preg_match( '/^bytes=0-$/', trim( wp_unslash( $_SERVER['HTTP_RANGE'] ) ) ); // phpcs:ignore
 
 	curl_setopt(
 		$ch,
 		CURLOPT_HEADERFUNCTION,
-		function ( $ch, $header ) use ( &$upstream_status, &$sent_accept, &$sent_validator, &$content_sha1, $url ) {
+		function ( $ch, $header ) use ( &$upstream_status, &$sent_accept, &$sent_validator, &$content_sha1, &$content_length, $want_full_range, $url ) {
 			$trimmed = trim( $header );
 			if ( preg_match( '/^HTTP\/[\d.]+\s+(\d+)/', $trimmed, $m ) ) {
 				$upstream_status = (int) $m[1];
@@ -230,6 +232,9 @@ function asp_handle_proxy_request() {
 					}
 					if ( 0 === stripos( $trimmed, 'Last-Modified:' ) || 0 === stripos( $trimmed, 'ETag:' ) ) {
 						$sent_validator = true;
+					}
+					if ( 0 === stripos( $trimmed, 'Content-Length:' ) ) {
+						$content_length = (int) trim( substr( $trimmed, 15 ) );
 					}
 				} elseif ( 0 === stripos( $trimmed, 'x-bz-content-sha1:' ) ) {
 					// Backblaze B2 exposes a content hash instead of an ETag.
@@ -250,6 +255,18 @@ function asp_handle_proxy_request() {
 						$etag = $content_sha1 ? $content_sha1 : md5( $url );
 						header( 'ETag: "' . $etag . '"' );
 						$sent_validator = true;
+					}
+					/*
+					 * Some hosts (e.g. Backblaze B2) answer "Range: bytes=0-"
+					 * with 200 instead of 206. Browsers open media streams with
+					 * exactly that header and treat a 200 reply as unseekable,
+					 * restarting playback on every seek. The body is identical
+					 * (full file from byte 0), so upgrade the response to a
+					 * proper 206 with Content-Range.
+					 */
+					if ( $want_full_range && 200 === $upstream_status && $content_length > 0 ) {
+						http_response_code( 206 );
+						header( 'Content-Range: bytes 0-' . ( $content_length - 1 ) . '/' . $content_length );
 					}
 				}
 			}
