@@ -580,6 +580,10 @@
 				cancelAnimationFrame( rafId );
 				rafId = null;
 			}
+			peaks = [];
+			canvasCtx.clearRect( 0, 0, canvas.width, canvas.height );
+			canvasCtx.fillStyle = settings.background;
+			canvasCtx.fillRect( 0, 0, canvas.width, canvas.height );
 		}
 
 		audio.addEventListener( 'play', start );

@@ -116,6 +116,10 @@ function asp_get_proxy_url( $url ) {
  * @return string
  */
 function asp_rewrite_audio_sources( $html ) {
+	if ( is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+		return $html;
+	}
+
 	if ( false === strpos( $html, '<audio' ) ) {
 		return $html;
 	}
